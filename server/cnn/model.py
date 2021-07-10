@@ -16,7 +16,7 @@ class CNN(Module):
         self.vgg4 = VGGBlock(32, 64, 3, 2)
         self.vgg5 = VGGBlock(64, 128, 3, 2)
         self.flatten = Flatten()
-        self.output = Linear(128 * 7 * 7, 2)
+        self.output = Linear(128 * 7 * 7, 1)
 
     def forward(self, x):
         x = self.vgg1(x)
