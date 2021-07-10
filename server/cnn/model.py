@@ -1,4 +1,4 @@
-from cnn.vgg_block import VGGBlock
+from server.cnn.vgg_block import VGGBlock
 from torch.nn import (
     Module,
     Flatten,
@@ -8,7 +8,7 @@ from torch.nn import (
 class CNN(Module):
     """CNN Model for cats and dogs classification"""
 
-    def __init__(self):
+    def __init__(self, num_classes):
         super().__init__()
         self.vgg1 = VGGBlock(3, 8, 3, 2)
         self.vgg2 = VGGBlock(8, 16, 3, 2)
@@ -16,7 +16,7 @@ class CNN(Module):
         self.vgg4 = VGGBlock(32, 64, 3, 2)
         self.vgg5 = VGGBlock(64, 128, 3, 2)
         self.flatten = Flatten()
-        self.output = Linear(128 * 7 * 7, 1)
+        self.output = Linear(128 * 7 * 7, num_classes)
 
     def forward(self, x):
         x = self.vgg1(x)
