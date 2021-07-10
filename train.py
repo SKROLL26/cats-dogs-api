@@ -65,7 +65,7 @@ def train(model, optimizer, lr_scheduler, num_epochs, batch_size, loss_fn, devic
             loss = loss_fn(preds, y_batch)
             loss.backward()
             optimizer.step()
-            preds = torch.softmax(preds)
+            preds = torch.softmax(preds, 1)
             preds_labels = preds.argmax(dim=1)
             train_loss += loss.item()
             train_acc += accuracy_score(y_batch.cpu(), preds_labels.cpu())
@@ -84,7 +84,7 @@ def train(model, optimizer, lr_scheduler, num_epochs, batch_size, loss_fn, devic
             with torch.no_grad():
                 preds = model(X_batch)
                 loss = loss_fn(preds, y_batch)
-                preds = torch.softmax(preds)
+                preds = torch.softmax(preds, 1)
                 preds_labels = preds.argmax(dim=1)
             val_loss += loss.item()
             val_acc += accuracy_score(y_batch.cpu(), preds_labels.cpu())
