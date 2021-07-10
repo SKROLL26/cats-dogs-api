@@ -16,6 +16,7 @@ from tqdm import tqdm
 import warnings
 import random
 import numpy as np
+from torchinfo import summary
 
 warnings.filterwarnings("ignore")
 torch.manual_seed(182)
@@ -105,7 +106,7 @@ args = vars(args)
 
 
 files = [path for path in pathlib.Path(args.get("dataset_path")).rglob("*.jpg")]
-train_files, val_files = train_test_split(files, test_size=0.2)
+train_files, val_files = train_test_split(files, test_size=0.25, stratify=[path.parent.name for path in files])
 print(f"Total samples: {len(files)}\nTraining samples: {len(train_files)}\nValidation samples: {len(val_files)}")
 label_encoder = LabelEncoder()
 train_labels = [path.parent.name for path in train_files]
@@ -120,9 +121,11 @@ train_dataset = CatsDogsDataset(train_files, train_labels)
 val_dataset = CatsDogsDataset(val_files, val_labels)
 
 model = CNN(num_classes).to(DEVICE)
-optimizer = torch.optim.Adam(model.parameters(), args.get("lr"))
+optimizer = torch.optim.AdamW(model.parameters(), args.get("lr"), weight_decay=0.015)
 loss_fn = torch.nn.CrossEntropyLoss()
-lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 5, 0.6)
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 3, 0.9)
+
+summary(model, (args.get("batch_size"), 3, 224, 224))
 
 train(model, optimizer, lr_scheduler, args.get("epochs"), args.get("batch_size"), loss_fn, DEVICE, train_dataset, val_dataset)
 
