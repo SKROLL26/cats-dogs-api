@@ -40,4 +40,4 @@ def predict(request_body: RequestBody):
     preds = model(inputs)
     preds_probas = torch.softmax(preds, 1).tolist()
 
-    return {"results": [{"ID": img_id, "cat_prob": cat_prob, "dog_prob": dog_prob} for img_id, (cat_prob, dog_prob) in zip(img_ids, preds_probas)]}
+    return {"results": [{"ID": img_id, "cat_proba": cat_prob, "dog_proba": dog_prob} for img_id, (cat_prob, dog_prob) in zip(img_ids, preds_probas)]}
