@@ -40,7 +40,4 @@ jobs:
           HEROKU_API_TOKEN: ${{secrets.HEROKU_API_TOKEN}}
           HEROKU_DEV_APP_NAME: ${{secrets.HEROKU_DEV_APP_NAME}}
         run: |
-        'curl -X PATCH https://api.heroku.com/apps/${HEROKU_DEV_APP_NAME}/formation -H "Content-Type: application/json" -H "Accept: application/vnd.heroku+json; version=3.docker-releases" -H "Authorization: Bearer ${HEROKU_API_TOKEN}" --data \'{ "updates": [ { "type": "web", "docker_image": "'$(cat image_id.txt)'" } ] }\''
-
-
-
+          curl -X PATCH "https://api.heroku.com/apps/${HEROKU_DEV_APP_NAME}/formation" -H "Content-Type: application/json" -H "Accept: application/vnd.heroku+json; version=3.docker-releases" -H "Authorization: Bearer ${HEROKU_API_TOKEN}" --data '{ "updates": [ { "type": "web", "docker_image": "'$(cat image_id.txt)'" } ] }'
