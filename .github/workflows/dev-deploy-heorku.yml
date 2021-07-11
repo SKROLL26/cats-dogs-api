@@ -6,7 +6,7 @@ on:
 jobs:
   Build-Docker-Container:
     runs-on: ubuntu-latest
-    container: docker-latest
+    container: docker:latest
     steps: 
       - uses: actions/checkout@v2
       - name: docker-build
