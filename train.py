@@ -1,135 +1,132 @@
 import argparse
-from server.cnn.model import CNN
-from torchvision.transforms import (
-    Compose,
-    Resize,
-    ToTensor,
-)
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-from sklearn.metrics import accuracy_score
-from torch.utils.data import DataLoader, Dataset
-import torch
-import pathlib
-from PIL import Image
-from tqdm import tqdm
+import copy
 import warnings
-import random
-import numpy as np
-from torchinfo import summary
+import torch
+from torch.utils.data import DataLoader
+from torchvision import datasets, models, transforms
+from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
-torch.manual_seed(182)
-random.seed(182)
-np.random.seed(182)
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class CatsDogsDataset(Dataset):
 
-    def __init__(self, files:list[pathlib.Path], labels):
-        super().__init__()
-        self.files = sorted(files)
-        self.labels = labels
-    
-
-    def __len__(self):
-        return len(self.files)
-
-    
-    def __getitem__(self, i):
-        transform = Compose([
-            Resize((224, 224)),
-            ToTensor(),
-            # Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
-
-        img = Image.open(self.files[i])
-        img.load()
-        img = transform(img)
-        label = self.labels[i]
-        return img, label
-
-def train(model, optimizer, lr_scheduler, num_epochs, batch_size, loss_fn, device, train_data, val_data):
-    train_loader = DataLoader(train_data, batch_size, drop_last=True, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size, drop_last=True, shuffle=True)
-    log_template = "Epoch: {:03d} | train_loss: {:.4f} | val_loss: {:.4f} | train_acc: {:.4f} | val_acc: {:.4f}"
-
+def train(model, optimizer, loss_fn, lr_scheduler, datasets, num_epochs, batch_size):
+    log_template = (
+        "train_loss: {:.4f} | train_acc: {:.4f} | val_loss: {:.4f} | val_acc: {:.4f}"
+    )
+    best_model_wts = model.state_dict()
+    best_acc = 0.0
+    dataloaders = {
+        "train": DataLoader(
+            datasets["train"], batch_size, shuffle=True, drop_last=True
+        ),
+        "val": DataLoader(datasets["val"], batch_size, shuffle=True, drop_last=True),
+    }
     for epoch in range(num_epochs):
-        model.train()
-        train_loss = 0.
-        train_acc = 0.
-        for X_batch, y_batch in tqdm(train_loader, leave=False, desc="Train"):
-            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
-            preds = model(X_batch)
-            loss = loss_fn(preds, y_batch)
-            loss.backward()
-            optimizer.step()
-            preds = torch.softmax(preds, 1)
-            preds_labels = preds.argmax(dim=1)
-            train_loss += loss.item()
-            train_acc += accuracy_score(y_batch.cpu(), preds_labels.cpu())
-            optimizer.zero_grad()
-        
-        train_loss /= len(train_loader)
-        train_acc /= len(train_loader)
+        epoch_data = {"train": {}, "val": {}}
+        tqdm.write(f"Epoch: {epoch+1:03d}/{num_epochs:03d}")
+        for mode in ("train", "val"):
+            if mode == "train":
+                model.train()
+            else:
+                model.eval()
 
-        lr_scheduler.step()
+            running_loss = 0.0
+            running_corrects = 0
 
-        model.eval()
-        val_loss = 0.
-        val_acc = 0.
-        for X_batch, y_batch in tqdm(val_loader, leave=False, desc="Validation"):
-            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
-            with torch.no_grad():
-                preds = model(X_batch)
-                loss = loss_fn(preds, y_batch)
-                preds = torch.softmax(preds, 1)
-                preds_labels = preds.argmax(dim=1)
-            val_loss += loss.item()
-            val_acc += accuracy_score(y_batch.cpu(), preds_labels.cpu())
-        val_loss /= len(val_loader)
-        val_acc /= len(val_loader)
+            for X, y in tqdm(dataloaders[mode], desc=mode, leave=False, unit="batch"):
+                X, y = X.to(DEVICE), y.to(DEVICE)
+                optimizer.zero_grad()
+                with torch.set_grad_enabled(mode == "train"):
+                    outputs = model(X)
+                    _, preds = torch.max(outputs, 1)
+                    loss = loss_fn(outputs, y)
 
-        tqdm.write(log_template.format(epoch+1, train_loss, val_loss, train_acc, val_acc))
-            
+                    if mode == "train":
+                        loss.backward()
+                        optimizer.step()
 
+                running_loss += loss.item() * X.size(0)
+                running_corrects += torch.sum(preds == y.data)
+
+            if mode == "train":
+                lr_scheduler.step()
+
+            epoch_loss = running_loss / len(datasets[mode])
+            epoch_acc = running_corrects.double() / len(datasets[mode])
+
+            epoch_data[mode]["loss"] = epoch_loss
+            epoch_data[mode]["acc"] = epoch_acc
+
+            if mode == "val" and epoch_acc > best_acc:
+                best_acc = epoch_acc
+                best_model_wts = copy.deepcopy(model.state_dict())
+        tqdm.write(
+            log_template.format(
+                epoch_data["train"]["loss"],
+                epoch_data["train"]["acc"],
+                epoch_data["val"]["loss"],
+                epoch_data["val"]["acc"],
+            )
+        )
+
+    model.load_state_dict(best_model_wts)
+    return model
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--dataset-path", type=str, required=True)
+parser.add_argument("--train", type=str, required=True)
+parser.add_argument("--val", type=str, required=True)
 parser.add_argument("-b", "--batch-size", type=int, required=True)
 parser.add_argument("-e", "--epochs", type=int, required=True)
 parser.add_argument("--lr", type=float, required=True)
-parser.add_argument("-o", "--out", type=str)
 
 args = parser.parse_args()
 args = vars(args)
 
+datasets = {
+    "train": datasets.ImageFolder(
+        args.get("train"),
+        transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]
+        ),
+    ),
+    "val": datasets.ImageFolder(
+        args.get("val"),
+        transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]
+        ),
+    ),
+}
 
-files = [path for path in pathlib.Path(args.get("dataset_path")).rglob("*.jpg")]
-train_files, val_files = train_test_split(files, test_size=0.25, stratify=[path.parent.name for path in files])
-print(f"Total samples: {len(files)}\nTraining samples: {len(train_files)}\nValidation samples: {len(val_files)}")
-label_encoder = LabelEncoder()
-train_labels = [path.parent.name for path in train_files]
-val_labels = [path.parent.name for path in val_files]
-train_labels = label_encoder.fit_transform(train_labels)
-val_labels = label_encoder.transform(val_labels)
-num_classes = len(label_encoder.classes_)
-print(f"Training for {num_classes} classes")
+model = models.resnet18(pretrained=True)
+for param in model.parameters():
+    param.requires_grad = False
+model.fc = torch.nn.Linear(model.fc.in_features, len(datasets["train"].classes))
+model = model.to(DEVICE)
 
-
-train_dataset = CatsDogsDataset(train_files, train_labels)
-val_dataset = CatsDogsDataset(val_files, val_labels)
-
-model = CNN(num_classes).to(DEVICE)
-optimizer = torch.optim.AdamW(model.parameters(), args.get("lr"), weight_decay=0.015)
+optimizer = torch.optim.Adam(model.parameters(), args.get("lr"))
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 3, 0.2)
 loss_fn = torch.nn.CrossEntropyLoss()
-lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 3, 0.9)
 
-summary(model, (args.get("batch_size"), 3, 224, 224))
+model = train(
+    model,
+    optimizer,
+    loss_fn,
+    lr_scheduler,
+    datasets,
+    args.get("epochs"),
+    args.get("batch_size"),
+)
+model = model.to("cpu")
 
-train(model, optimizer, lr_scheduler, args.get("epochs"), args.get("batch_size"), loss_fn, DEVICE, train_dataset, val_dataset)
-
-torch.save(model.state_dict, args.get("out", "./model.pt"))
-
+torch.save(model.state_dict(), "model.pt")
