@@ -4,7 +4,7 @@ on:
     branches: 
       - develop
 jobs:
-  Deploy-App:
+  Build-Push-Image:
     runs-on: ubuntu-latest
     container: docker:latest
     steps: 
@@ -19,15 +19,30 @@ jobs:
           docker build -f Dockerfile.heroku --iidfile image_id.txt -t $HEROKU_DEV_REGISTRY_URL .
           docker login -u $HEROKU_USERNAME --password $HEROKU_API_TOKEN registry.heroku.com
           docker push $HEROKU_DEV_REGISTRY_URL
-      - name: Deploy on Heroku
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: image-id
+          path: image_id.txt
+  Deploy-App:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install curl
+        run: sudo apt install -y curl
+      - name: Get image id artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: image-id
+      - name: Deploy
         env:
           HEROKU_API_TOKEN: ${{secrets.HEROKU_API_TOKEN}}
           HEROKU_DEV_APP_NAME: ${{secrets.HEROKU_DEV_APP_NAME}}
         run: |
-          curl -X PATCH "https://api.heroku.com/apps/${HEROKU_DEV_APP_NAME}/formation" \
-          -H "Content-Type: application/json" \
-          -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
-          -H "Authorization: Bearer ${HEROKU_API_TOKEN}" \
-          --data '{ "updates": [ { "type": "web", "docker_image": "'$(cat image_id.txt)'" } ] }'
+        curl -X PATCH https://api.heroku.com/apps/${HEROKU_DEV_APP_NAME}/formation \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
+        -H "Authorization: Bearer ${HEROKU_API_TOKEN}" \
+        --data '{ "updates": [ { "type": "web", "docker_image": "'$(cat image_id.txt)'" } ] }'
+
 
 
