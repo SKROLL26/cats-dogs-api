@@ -24,7 +24,9 @@ jobs:
         with:
           name: image-id
           path: image_id.txt
+
   Deploy-App:
+    needs: Build-Push-Image
     runs-on: ubuntu-latest
     steps:
       - name: Install curl
