@@ -1,16 +1,16 @@
 from pydantic import BaseModel
 from pydantic import Field
-class ModelInput(BaseModel):
-    id_:str = Field(alias="ID", description="ID of the image")
-    img_code: str = Field(description="Base64 encoded image")
+class Image(BaseModel):
+    id_: str = Field(..., alias="ID", description="ID of the image")
+    img_code: bytes = Field(..., description="Base64 encoded image")
 
-class ModelOutput(BaseModel):
-    id_:str = Field(alias="ID", description="ID of the image")
-    cat_prob:float = Field(description="Probability of belonging to cat class")
-    dog_prob:float = Field(description="Probability of belonging to dog class")
+class Prediction(BaseModel):
+    id_: str = Field(..., alias="ID", description="ID of the image")
+    cat_proba: float = Field(..., description="Probability of belonging to cat class")
+    dog_proba: float = Field(..., description="Probability of belonging to dog class")
 
 class RequestBody(BaseModel):
-    photos: list[ModelInput]
+    photos: list[Image] = Field(..., max_items=10)
 
 class ResponseBody(BaseModel):
-    results: list[ModelOutput]
+    results: list[Prediction]
