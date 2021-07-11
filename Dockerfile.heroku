@@ -10,4 +10,4 @@ COPY --from=builder /install /usr/local
 COPY . .
 RUN useradd catsdogs
 USER catsdogs
-CMD [ "sh", "-c", "gunicorn --access-logfile - --error-logfile - -w 8 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-5000} server.main:app" ]
+CMD [ "sh", "-c", "gunicorn --access-logfile - --error-logfile - -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-5000} server.main:app" ]
