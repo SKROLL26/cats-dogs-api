@@ -16,7 +16,7 @@ jobs:
           HEROKU_API_TOKEN: ${{secrets.HEROKU_API_TOKEN}}
         run: |
           ls
-          docker build -f Dockerfile.heroku --iidfile image_id.txt -t $HEROKU_DEV_REGISTRY_URL
+          docker build -f Dockerfile.heroku --iidfile image_id.txt -t $HEROKU_DEV_REGISTRY_URL .
           docker login -u $HEROKU_USERNAME --password $HEROKU_TOKEN registry.heroku.com
           cat image_id.txt
 
