@@ -10,7 +10,7 @@ jobs:
     steps: 
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - name: Build and push container
+      - name: Build and push docker image
         env: 
           HEROKU_DEV_REGISTRY_URL: ${{secrets.HEROKU_DEV_REGISTRY_URL}}
           HEROKU_USERNAME: ${{secrets.HEROKU_USERNAME}}
@@ -24,7 +24,6 @@ jobs:
           HEROKU_API_TOKEN: ${{secrets.HEROKU_API_TOKEN}}
           HEROKU_DEV_APP_NAME: ${{secrets.HEROKU_DEV_APP_NAME}}
         run: |
-          apt install -y curl
           curl -X PATCH "https://api.heroku.com/apps/${HEROKU_DEV_APP_NAME}/formation" \
           -H "Content-Type: application/json" \
           -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
