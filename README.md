@@ -1,1 +1,2 @@
 # cats-dogs-api
+[![Deploy dev app on Heroku](https://github.com/SKROLL26/cats-dogs-api/actions/workflows/dev-deploy-heroku.yml/badge.svg?branch=develop)](https://github.com/SKROLL26/cats-dogs-api/actions/workflows/dev-deploy-heroku.yml)
