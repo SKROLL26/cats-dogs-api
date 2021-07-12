@@ -1,0 +1,13 @@
+# Dockerfile for building and running app container on Heroku
+FROM python:3.9-slim as builder
+WORKDIR /install
+COPY requirements.txt .
+RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
+
+FROM python:3.9-slim
+WORKDIR /cats-dogs-api
+COPY --from=builder /install /usr/local
+COPY . .
+RUN useradd catsdogs
+USER catsdogs
+CMD [ "sh", "-c", "gunicorn --access-logfile - --error-logfile - -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-5000} server.main:app" ]
