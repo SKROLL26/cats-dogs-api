@@ -5,7 +5,8 @@ warnings.filterwarnings("ignore")
 
 app = FastAPI(
     title="Cats and Dogs classification API",
-    redoc_url=None
+    redoc_url=None,
+    docs_url="/"
 )
 
 app.include_router(router)
