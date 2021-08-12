@@ -18,5 +18,7 @@ Run container:
 SwaggerUI available at `http://<host>:<port>/docs`
 
 Environment variables used by application:
-* **STATE_DICT_PATH** (Default: `resnet18_cat_dog.pt`) - path to the ResNet18 model weights
+* **MODEL_ARCH** (Default: `resnet18`) - Enum for selecting model architecture. Possible values:
+    * `resnet18`
+    * `mobilenetv3`
 * **REQUEST_MAX_ITEMS** (Default: `10`) - maximum number of images to process in one request

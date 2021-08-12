@@ -1,7 +1,12 @@
 from pydantic import BaseSettings
+from enum import Enum
+
+class ModelArch(str, Enum):
+    MOBILENET_V3 = "mobilenetv3"
+    RESNET18 = "resnet18"
 
 class AppSettings(BaseSettings):
-    state_dict_path: str = "resnet18_cat_dog.pt"
+    model_arch: ModelArch = ModelArch.RESNET18
     request_max_items: int = 10
 
 
